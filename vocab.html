@@ -66,6 +66,50 @@
     padding: 24px 16px 60px;
   }
 
+  .notebook-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .notebook-select {
+    flex: 1;
+    min-width: 0;
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--ink);
+    outline: none;
+  }
+
+  .notebook-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink-soft);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .icon-btn:hover {
+    border-color: var(--navy-soft);
+    color: var(--navy);
+  }
+
   .form-card {
     background: var(--card);
     border-radius: 14px;
@@ -181,6 +225,29 @@
     border-color: var(--navy-soft);
   }
 
+  .io-bar {
+    display: flex;
+    gap: 8px;
+  }
+
+  .io-btn {
+    flex: 1;
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 13px;
+    padding: 9px 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .io-btn:hover {
+    border-color: var(--navy-soft);
+    color: var(--navy);
+  }
+
   .list {
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -268,6 +335,7 @@
     word-break: keep-all;
   }
 
+  .edit-btn,
   .del-btn {
     flex-shrink: 0;
     width: 32px;
@@ -281,10 +349,71 @@
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
 
+  .edit-btn:hover {
+    background: var(--row-alt);
+    color: var(--navy);
+    border-color: var(--navy-soft);
+  }
+
   .del-btn:hover {
     background: var(--danger-soft);
     color: var(--danger);
     border-color: var(--danger-soft);
+  }
+
+  .edit-row {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .edit-row input {
+    width: 100%;
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--ink);
+    outline: none;
+  }
+
+  .edit-row input.edit-hanzi {
+    font-family: "Noto Serif SC", serif;
+    font-size: 17px;
+  }
+
+  .edit-row input:focus {
+    border-color: var(--navy-soft);
+    background: var(--card);
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .edit-actions button {
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .save-btn {
+    border: 1px solid var(--navy);
+    background: var(--navy);
+    color: #FFFFFF;
+  }
+
+  .cancel-btn {
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink-soft);
   }
 </style>
 </head>
@@ -296,6 +425,15 @@
 </div>
 
 <div class="stage">
+  <div class="notebook-bar">
+    <select class="notebook-select" id="notebookSelect"></select>
+    <div class="notebook-actions">
+      <button class="icon-btn" id="addNotebookBtn" title="새 단어장">+</button>
+      <button class="icon-btn" id="renameNotebookBtn" title="이름 변경">✎</button>
+      <button class="icon-btn" id="deleteNotebookBtn" title="삭제">🗑</button>
+    </div>
+  </div>
+
   <div class="form-card">
     <div class="field">
       <label for="hanziInput">한자</label>
@@ -317,16 +455,28 @@
   </div>
 
   <div class="list-header">
-    <button class="hide-toggle" id="hideToggle">✓ 외운 단어 숨기기</button>
     <span class="count" id="countLabel">0개</span>
+    <button class="hide-toggle" id="hideToggle">✓ 외운 단어 숨기기</button>
+  </div>
+
+  <div class="io-bar">
+    <button class="io-btn" id="exportBtn">내보내기</button>
+    <button class="io-btn" id="importBtn">가져오기</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
   </div>
 
   <div class="list" id="list"></div>
 </div>
 
 <script>
-  const STORAGE_KEY = "zh-vocab-list";
+  const NOTEBOOKS_KEY = "zh-vocab-notebooks";
+  const CURRENT_KEY = "zh-vocab-current-notebook";
+  const LEGACY_KEY = "zh-vocab-list";
 
+  const notebookSelect = document.getElementById("notebookSelect");
+  const addNotebookBtn = document.getElementById("addNotebookBtn");
+  const renameNotebookBtn = document.getElementById("renameNotebookBtn");
+  const deleteNotebookBtn = document.getElementById("deleteNotebookBtn");
   const hanziInput = document.getElementById("hanziInput");
   const pinyinInput = document.getElementById("pinyinInput");
   const meaningInput = document.getElementById("meaningInput");
@@ -335,29 +485,76 @@
   const countLabel = document.getElementById("countLabel");
   const searchInput = document.getElementById("searchInput");
   const hideToggle = document.getElementById("hideToggle");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const importFile = document.getElementById("importFile");
 
   let searchQuery = "";
   let hideChecked = false;
+  let editingId = null;
 
-  function loadWords() {
+  function uid() {
+    return Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+  }
+
+  function migrateLegacyWords() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return parsed.map((w) => ({ checked: false, ...w }));
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return null;
+      return parsed.map((w) => ({
+        id: w.id || uid(),
+        hanzi: w.hanzi || "",
+        pinyin: w.pinyin || "",
+        meaning: w.meaning || "",
+        checked: !!w.checked
+      }));
     } catch (e) {
-      return [];
+      return null;
     }
   }
 
-  function saveWords(words) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
+  function loadNotebooks() {
+    try {
+      const raw = localStorage.getItem(NOTEBOOKS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      // fall through to defaults
+    }
+
+    const legacyWords = migrateLegacyWords();
+    return [{ id: "default", name: "기본 단어장", words: legacyWords || [] }];
   }
 
-  let words = loadWords();
+  let notebooks = loadNotebooks();
+  let currentId = localStorage.getItem(CURRENT_KEY) || notebooks[0].id;
+  if (!notebooks.some((nb) => nb.id === currentId)) {
+    currentId = notebooks[0].id;
+  }
+
+  function saveNotebooks() {
+    localStorage.setItem(NOTEBOOKS_KEY, JSON.stringify(notebooks));
+    localStorage.setItem(CURRENT_KEY, currentId);
+  }
+
+  function getCurrentNotebook() {
+    return notebooks.find((nb) => nb.id === currentId);
+  }
+
+  function renderNotebookSelect() {
+    notebookSelect.innerHTML = notebooks
+      .map((nb) => `<option value="${escapeAttr(nb.id)}"${nb.id === currentId ? " selected" : ""}>${escapeHtml(nb.name)}</option>`)
+      .join("");
+  }
 
   function getVisibleWords() {
+    const nb = getCurrentNotebook();
     const q = searchQuery.trim().toLowerCase();
-    return words.filter((word) => {
+    return nb.words.filter((word) => {
       if (hideChecked && word.checked) return false;
       if (!q) return true;
       return (
@@ -368,11 +565,15 @@
   }
 
   function render() {
-    countLabel.textContent = words.length + "개";
+    const nb = getCurrentNotebook();
+    const total = nb.words.length;
+    const checkedCount = nb.words.filter((w) => w.checked).length;
+    const pct = total ? Math.round((checkedCount / total) * 100) : 0;
+    countLabel.textContent = total === 0 ? "0개" : `${total}개 · 암기 ${checkedCount}개 (${pct}%)`;
 
     const visible = getVisibleWords();
 
-    if (words.length === 0) {
+    if (total === 0) {
       listEl.innerHTML = '<div class="empty">아직 추가된 단어가 없어요.<br>위 입력창에 단어를 추가해보세요.</div>';
       return;
     }
@@ -385,16 +586,34 @@
     listEl.innerHTML = "";
     visible.forEach((word) => {
       const item = document.createElement("div");
-      item.className = "item" + (word.checked ? " checked" : "");
-      item.innerHTML = `
-        <button class="check-btn${word.checked ? " on" : ""}" data-id="${word.id}" aria-label="외운 단어 체크">${word.checked ? "✓" : ""}</button>
-        <div class="hanzi">${escapeHtml(word.hanzi)}</div>
-        <div class="info">
-          <div class="pinyin">${escapeHtml(word.pinyin)}</div>
-          <div class="meaning">${escapeHtml(word.meaning)}</div>
-        </div>
-        <button class="del-btn" data-id="${word.id}" aria-label="삭제">✕</button>
-      `;
+
+      if (word.id === editingId) {
+        item.className = "item";
+        item.innerHTML = `
+          <div class="edit-row">
+            <input type="text" class="edit-hanzi" value="${escapeAttr(word.hanzi)}" placeholder="한자">
+            <input type="text" class="edit-pinyin" value="${escapeAttr(word.pinyin)}" placeholder="병음">
+            <input type="text" class="edit-meaning" value="${escapeAttr(word.meaning)}" placeholder="한국어 뜻">
+            <div class="edit-actions">
+              <button class="cancel-btn" data-id="${word.id}">취소</button>
+              <button class="save-btn" data-id="${word.id}">저장</button>
+            </div>
+          </div>
+        `;
+      } else {
+        item.className = "item" + (word.checked ? " checked" : "");
+        item.innerHTML = `
+          <button class="check-btn${word.checked ? " on" : ""}" data-id="${word.id}" aria-label="외운 단어 체크">${word.checked ? "✓" : ""}</button>
+          <div class="hanzi">${escapeHtml(word.hanzi)}</div>
+          <div class="info">
+            <div class="pinyin">${escapeHtml(word.pinyin)}</div>
+            <div class="meaning">${escapeHtml(word.meaning)}</div>
+          </div>
+          <button class="edit-btn" data-id="${word.id}" aria-label="수정">✎</button>
+          <button class="del-btn" data-id="${word.id}" aria-label="삭제">✕</button>
+        `;
+      }
+
       listEl.appendChild(item);
     });
   }
@@ -403,6 +622,14 @@
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  function escapeAttr(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   function addWord() {
@@ -415,15 +642,16 @@
       return;
     }
 
-    words.push({
-      id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+    const nb = getCurrentNotebook();
+    nb.words.push({
+      id: uid(),
       hanzi,
       pinyin,
       meaning,
       checked: false
     });
 
-    saveWords(words);
+    saveNotebooks();
     render();
 
     hanziInput.value = "";
@@ -433,18 +661,33 @@
   }
 
   function deleteWord(id) {
-    words = words.filter((w) => w.id !== id);
-    saveWords(words);
+    const nb = getCurrentNotebook();
+    nb.words = nb.words.filter((w) => w.id !== id);
+    saveNotebooks();
     render();
   }
 
   function toggleChecked(id) {
-    const word = words.find((w) => w.id === id);
+    const nb = getCurrentNotebook();
+    const word = nb.words.find((w) => w.id === id);
     if (word) {
       word.checked = !word.checked;
-      saveWords(words);
+      saveNotebooks();
       render();
     }
+  }
+
+  function saveEdit(id, row) {
+    const nb = getCurrentNotebook();
+    const word = nb.words.find((w) => w.id === id);
+    if (word) {
+      word.hanzi = row.querySelector(".edit-hanzi").value.trim();
+      word.pinyin = row.querySelector(".edit-pinyin").value.trim();
+      word.meaning = row.querySelector(".edit-meaning").value.trim();
+      saveNotebooks();
+    }
+    editingId = null;
+    render();
   }
 
   addBtn.addEventListener("click", addWord);
@@ -467,6 +710,23 @@
     const checkBtn = e.target.closest(".check-btn");
     if (checkBtn) {
       toggleChecked(checkBtn.dataset.id);
+      return;
+    }
+    const editBtn = e.target.closest(".edit-btn");
+    if (editBtn) {
+      editingId = editBtn.dataset.id;
+      render();
+      return;
+    }
+    const cancelBtn = e.target.closest(".cancel-btn");
+    if (cancelBtn) {
+      editingId = null;
+      render();
+      return;
+    }
+    const saveBtn = e.target.closest(".save-btn");
+    if (saveBtn) {
+      saveEdit(saveBtn.dataset.id, saveBtn.closest(".edit-row"));
     }
   });
 
@@ -482,6 +742,97 @@
     render();
   });
 
+  notebookSelect.addEventListener("change", (e) => {
+    currentId = e.target.value;
+    editingId = null;
+    searchQuery = "";
+    searchInput.value = "";
+    saveNotebooks();
+    render();
+  });
+
+  addNotebookBtn.addEventListener("click", () => {
+    const name = prompt("새 단어장 이름을 입력하세요");
+    if (!name || !name.trim()) return;
+    const nb = { id: uid(), name: name.trim(), words: [] };
+    notebooks.push(nb);
+    currentId = nb.id;
+    saveNotebooks();
+    renderNotebookSelect();
+    render();
+  });
+
+  renameNotebookBtn.addEventListener("click", () => {
+    const nb = getCurrentNotebook();
+    const name = prompt("단어장 이름 변경", nb.name);
+    if (!name || !name.trim()) return;
+    nb.name = name.trim();
+    saveNotebooks();
+    renderNotebookSelect();
+  });
+
+  deleteNotebookBtn.addEventListener("click", () => {
+    if (notebooks.length <= 1) {
+      alert("마지막 남은 단어장은 삭제할 수 없어요.");
+      return;
+    }
+    const nb = getCurrentNotebook();
+    if (!confirm(`"${nb.name}" 단어장을 삭제할까요? 안의 단어도 모두 사라져요.`)) return;
+    notebooks = notebooks.filter((n) => n.id !== nb.id);
+    currentId = notebooks[0].id;
+    saveNotebooks();
+    renderNotebookSelect();
+    render();
+  });
+
+  exportBtn.addEventListener("click", () => {
+    const nb = getCurrentNotebook();
+    const data = JSON.stringify(nb.words, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${nb.name}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener("click", () => importFile.click());
+
+  importFile.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed)) throw new Error("invalid format");
+
+        const nb = getCurrentNotebook();
+        parsed.forEach((w) => {
+          nb.words.push({
+            id: uid(),
+            hanzi: w.hanzi || "",
+            pinyin: w.pinyin || "",
+            meaning: w.meaning || "",
+            checked: !!w.checked
+          });
+        });
+
+        saveNotebooks();
+        render();
+      } catch (err) {
+        alert("가져오기 실패: JSON 형식을 확인해주세요.");
+      }
+    };
+    reader.readAsText(file);
+    importFile.value = "";
+  });
+
+  renderNotebookSelect();
   render();
 </script>
 
